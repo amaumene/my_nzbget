@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8 AS builder
+FROM registry.access.redhat.com/ubi9 AS builder
 
 RUN dnf install gcc gcc-c++ make libstdc++-devel cmake libxml2-devel openssl-devel -y
 
@@ -33,7 +33,7 @@ RUN cmake . -DDISABLE_CURSES=ON
 RUN cmake --build .
 RUN ls -lah
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal
+FROM registry.access.redhat.com/ubi9/ubi-minimal
 
 RUN microdnf install util-linux
 
