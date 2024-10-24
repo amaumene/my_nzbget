@@ -15,7 +15,7 @@ RUN tar xvaf unrar.tar.gz -C unrar --strip-components=1
 
 WORKDIR /app/unrar
 
-RUN if [ $(lscpu | grep -c aarch64)  ]; then sed -i 's|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a+crypto+crc|' makefile; fi
+RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a+crypto+crc|' makefile; fi
 RUN cat makefile | grep CXXFLAGS
 RUN make
 #RUN install -v -m755 unrar /usr/bin
