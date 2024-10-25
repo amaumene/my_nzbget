@@ -65,4 +65,6 @@ VOLUME /config
 
 VOLUME /data
 
+EXPOSE 6789/tcp
+
 CMD [ "/app/start.sh" ]
