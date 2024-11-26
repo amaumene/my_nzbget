@@ -35,7 +35,7 @@ RUN ls -lah
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal
 
-RUN microdnf install util-linux -y
+RUN microdnf install util-linux which -y
 
 WORKDIR /app
 
