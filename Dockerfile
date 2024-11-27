@@ -1,6 +1,6 @@
 FROM alpine AS builder
 
-RUN apk add g++ gcc git libxml2-static libxml2-dev xz-static zlib-static libxslt-static make openssl-libs-static openssl-dev boost-static boost-dev curl cmake util-linux-misc
+RUN apk add g++ gcc git libxml2-static libxml2-dev xz-static zlib-static libxslt-static make openssl-libs-static openssl-dev boost-static boost-dev curl cmake util-linux-misc file
 
 RUN export VERSION=$(curl -s https://api.github.com/repos/aawc/unrar/releases/latest | grep '"tag_name"' | sed 's/.*"tag_name": "\(.*\)",/\1/') && echo $VERSION > version.txt
 
@@ -16,7 +16,11 @@ WORKDIR /app/unrar
 
 RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS=-march=native|CXXFLAGS=-mtune=cortex-a53 -march=armv8-a+crypto+crc|' makefile; fi
 
+RUN sed -i 's|LDFLAGS=-pthread|LDFLAGS=-pthread -static|' makefile
+
 RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
+
+RUN file ./unrar
 
 WORKDIR /app
 
