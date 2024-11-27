@@ -1,9 +1,8 @@
-FROM registry.access.redhat.com/ubi9 AS builder
+FROM alpine AS builder
 
-RUN dnf install gcc gcc-c++ make libstdc++-devel cmake libxml2-devel openssl-devel -y
+RUN apk add g++ gcc git libxml2-static libxml2-dev xz-static zlib-static libxslt-static make openssl-libs-static openssl-dev boost-static boost-dev curl cmake util-linux-misc
 
-RUN export VERSION=$(curl -s https://api.github.com/repos/aawc/unrar/releases/latest | grep '"tag_name"' | sed 's/.*"tag_name": "\(.*\)",/\1/') \
-  && echo $VERSION > version.txt
+RUN export VERSION=$(curl -s https://api.github.com/repos/aawc/unrar/releases/latest | grep '"tag_name"' | sed 's/.*"tag_name": "\(.*\)",/\1/') && echo $VERSION > version.txt
 
 WORKDIR /app
 
@@ -15,10 +14,9 @@ RUN tar xvaf unrar.tar.gz -C unrar --strip-components=1
 
 WORKDIR /app/unrar
 
-RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a+crypto+crc|' makefile; fi
-RUN cat makefile | grep CXXFLAGS
-RUN make
-#RUN install -v -m755 unrar /usr/bin
+RUN if [ $(lscpu | grep -c aarch64) -gt 0 ]; then sed -i 's|CXXFLAGS=-march=native|CXXFLAGS=-mtune=cortex-a53 -march=armv8-a+crypto+crc|' makefile; fi
+
+RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
 
 WORKDIR /app
 
@@ -29,37 +27,35 @@ RUN mkdir nzbget
 RUN tar xvaf nzbget.tar.gz -C nzbget --strip-components=1
 
 WORKDIR /app/nzbget
-RUN cmake . -DDISABLE_CURSES=ON
-RUN cmake --build .
-RUN ls -lah
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal
+RUN mkdir build && \
+      cd build && \
+      if [ $(lscpu | grep -c aarch64) -gt 0 ]; then export CXXFLAGS="-mtune=cortex-a53 -march=armv8-a+crypto+crc -I/usr/include/libxml2"; else export CXXFLAGS="-I/usr/include/libxml2"; fi && \
+      export LIBS="-lxml2 -lz -llzma -lrt -lboost_json -lssl -lcrypto -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" && \
+      cmake .. -DDISABLE_CURSES=ON -DENABLE_STATIC=ON && \
+      cmake --build . -v -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
 
-RUN microdnf install util-linux which -y
-
-WORKDIR /app
-
-COPY --from=builder /app/unrar/unrar /app/unrar
-COPY --from=builder /app/nzbget/webui /app/webui
-COPY --from=builder /app/nzbget/nzbget /app/nzbget
-COPY --from=builder /app/nzbget/nzbget.conf /app/webui/nzbget.conf.template
-COPY --from=builder /app/nzbget/nzbget.conf /app/nzbget.conf
-
-COPY ./start.sh .
 
 RUN sed -i \
-    -e "s|^MainDir=.*|MainDir=/data/nzbget|g" \
-    -e "s|^ScriptDir=.*|ScriptDir=$\{MainDir\}/scripts|g" \
-    -e "s|^WebDir=.*|WebDir=$\{AppDir\}/webui|g" \
-    -e "s|^ConfigTemplate=.*|ConfigTemplate=$\{AppDir\}/webui/nzbget.conf.template|g" \
-    -e "s|^UnrarCmd=.*|UnrarCmd=unrar|g" \
-    -e "s|^DestDir=.*|DestDir=$\{MainDir\}/completed|g" \
-    -e "s|^InterDir=.*|InterDir=$\{MainDir\}/intermediate|g" \
-    -e "s|^LogFile=.*|LogFile=$\{MainDir\}/nzbget.log|g" \
-    -e "s|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|g" \
-    /app/nzbget.conf
+  -e "s|^MainDir=.*|MainDir=/data/nzbget|g" \
+  -e "s|^ScriptDir=.*|ScriptDir=/config/scripts|g" \
+  -e "s|^ConfigTemplate=.*|ConfigTemplate=$\{AppDir\}/nzbget.conf.template|g" \
+  -e "s|^UnrarCmd=.*|UnrarCmd=/app/unrar|g" \
+  -e "s|^WebDir=.*|WebDir=$\{AppDir}/webui|g" \
+  -e "s|^DestDir=.*|DestDir=$\{MainDir\}/completed|g" \
+  -e "s|^InterDir=.*|InterDir=$\{MainDir\}/intermediate|g" \
+  -e "s|^LogFile=.*|LogFile=$\{MainDir\}/nzbget.log|g" \
+  -e "s|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|g" \
+  build/nzbget.conf
 
-USER 1001
+FROM gcr.io/distroless/static:nonroot
+
+COPY --chown=nonroot --from=builder /app/unrar/unrar /app/unrar
+COPY --chown=nonroot --from=builder /app/nzbget/build/nzbget /app/nzbget
+COPY --chown=nonroot --from=builder /app/nzbget/webui /app/webui
+COPY --chown=nonroot --from=builder /app/nzbget/build/nzbget.conf /app/nzbget.conf.template
+COPY --chown=nonroot --from=builder /app/nzbget/build/nzbget.conf /config/nzbget.conf
+
 
 VOLUME /config
 
@@ -67,4 +63,4 @@ VOLUME /data
 
 EXPOSE 6789/tcp
 
-CMD [ "/app/start.sh" ]
+CMD [ "/app/nzbget", "-s", "-o", "OutputMode=log", "-c", "/config/nzbget.conf" ]
