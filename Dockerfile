@@ -45,7 +45,7 @@ RUN sed -i \
   -e "s|^InterDir=.*|InterDir=$\{MainDir\}/intermediate|g" \
   -e "s|^LogFile=.*|LogFile=$\{MainDir\}/nzbget.log|g" \
   -e "s|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|g" \
-  -e "s|^CertStore=.*|CertStore=/app/ca-certificates.crt|g" \
+  -e "s|^CertStore=.*|CertStore=/etc/ssl/certs/ca-certificates.crt|g" \
   build/nzbget.conf
 
 FROM scratch
@@ -57,7 +57,7 @@ COPY --chown=65532 --from=builder /app/nzbget/build/nzbget.conf /app/nzbget.conf
 COPY --chown=65532 --from=builder /app/nzbget/build/nzbget.conf /config/nzbget.conf
 
 COPY --from=builder /bin/busybox.static /busybox
-COPY --chown=65532 --from=builder /etc/ssl/certs/ca-certificates.crt /app/ca-certificates.crt
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 VOLUME /config
 
