@@ -35,7 +35,6 @@ RUN mkdir build && \
       cmake .. -DDISABLE_CURSES=ON -DENABLE_STATIC=ON && \
       cmake --build . -v -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
 
-
 RUN sed -i \
   -e "s|^MainDir=.*|MainDir=/data/nzbget|g" \
   -e "s|^ScriptDir=.*|ScriptDir=/config/scripts|g" \
@@ -46,18 +45,19 @@ RUN sed -i \
   -e "s|^InterDir=.*|InterDir=$\{MainDir\}/intermediate|g" \
   -e "s|^LogFile=.*|LogFile=$\{MainDir\}/nzbget.log|g" \
   -e "s|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|g" \
+  -e "s|^CertStore=.*|CertStore=/app/ca-certificates.crt|g" \
   build/nzbget.conf
 
-FROM gcr.io/distroless/static:nonroot
+FROM scratch
 
-COPY --chown=nonroot --from=builder /app/unrar/unrar /app/unrar
-COPY --chown=nonroot --from=builder /app/nzbget/build/nzbget /app/nzbget
-COPY --chown=nonroot --from=builder /app/nzbget/webui /app/webui
-COPY --chown=nonroot --from=builder /app/nzbget/build/nzbget.conf /app/nzbget.conf.template
-COPY --chown=nonroot --from=builder /app/nzbget/build/nzbget.conf /config/nzbget.conf
+COPY --chown=65532 --from=builder /app/unrar/unrar /app/unrar
+COPY --chown=65532 --from=builder /app/nzbget/build/nzbget /app/nzbget
+COPY --chown=65532 --from=builder /app/nzbget/webui /app/webui
+COPY --chown=65532 --from=builder /app/nzbget/build/nzbget.conf /app/nzbget.conf.template
+COPY --chown=65532 --from=builder /app/nzbget/build/nzbget.conf /config/nzbget.conf
 
 COPY --from=builder /bin/busybox.static /busybox
-
+COPY --chown=65532 --from=builder /etc/ssl/certs/ca-certificates.crt /app/ca-certificates.crt
 
 VOLUME /config
 
