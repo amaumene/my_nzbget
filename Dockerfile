@@ -1,6 +1,15 @@
 FROM alpine AS builder
 
-RUN apk add g++ gcc git libxml2-static libxml2-dev xz-static zlib-static libxslt-static make openssl-libs-static openssl-dev boost-static boost-dev curl cmake util-linux-misc busybox-static
+RUN apk update \
+  && apk upgrade \
+  && apk add --no-cache \
+    clang \
+    clang-dev
+
+RUN ln -sf /usr/bin/clang /usr/bin/cc \
+  && ln -sf /usr/bin/clang++ /usr/bin/c++ 
+
+RUN apk add git libxml2-static libxml2-dev xz-static zlib-static libxslt-static make openssl-libs-static openssl-dev boost-static boost-dev curl cmake util-linux-misc busybox-static
 
 WORKDIR /app
 
