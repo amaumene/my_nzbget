@@ -97,8 +97,6 @@ RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
 
 RUN make install
 
-RUN ls -lah /usr/local/lib
-
 RUN sed -e '/providers = provider_sect/a\' -e 'engines = engines_sect' -i /usr/local/ssl/openssl.cnf
 
 COPY ./devcrypto.cnf ./devcrypto.cnf
@@ -132,8 +130,8 @@ RUN tar xvaf nzbget.tar.gz -C nzbget --strip-components=1
 WORKDIR /app/nzbget
 
 COPY --from=openssl /usr/local/include/openssl/ /usr/local/include/openssl/
-COPY --from=openssl /usr/local/lib/libcrypto.a /usr/local/lib/libcrypto.a
-COPY --from=openssl /usr/local/lib/libssl.a /usr/local/lib/libssl.a
+COPY --from=openssl /app/openssl/libcrypto.a /usr/local/lib/libcrypto.a
+COPY --from=openssl /app/openssl/libssl.a /usr/local/lib/libssl.a
 
 RUN mkdir build && \
       cd build && \
