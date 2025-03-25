@@ -97,6 +97,8 @@ RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
 
 RUN make install
 
+RUN ls -lah /usr/local/lib
+
 RUN sed -e '/providers = provider_sect/a\' -e 'engines = engines_sect' -i /usr/local/ssl/openssl.cnf
 
 COPY ./devcrypto.cnf ./devcrypto.cnf
