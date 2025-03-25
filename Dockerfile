@@ -79,7 +79,6 @@ RUN if [ $(lscpu | grep -c aarch64) -gt 0 ];\
                 enable-devcryptoeng; \
     else ./Configure enable-ktls \
                 no-shared \
-                static \
                 no-zlib \
                 no-async \
                 no-comp \
