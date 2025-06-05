@@ -1,0 +1,32 @@
+contents:
+  repositories:
+    - https://packages.wolfi.dev/os
+    - ./packages  # Local path to your custom built package
+  keyring:
+    - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+  packages:
+    - nzbget
+    - unrar
+    - busybox-full
+
+entrypoint:
+  command: nzbget -s -o OutputMode=log -c /config/nzbget.conf
+
+accounts:
+  groups:
+    - groupname: nonroot
+      gid: 65532
+  users:
+    - username: nonroot
+      uid: 65532
+  run-as: 65532
+
+#work-dir: /invidious/
+
+# Optional: Set labels and image name
+annotations:
+  org.opencontainers.image.title: "nzbget"
+  org.opencontainers.image.description: "Efficient usenet downloader"
+  org.opencontainers.image.version: "0.1.0"
+  org.opencontainers.image.licenses: "AGPL-3.0-or-later"
+

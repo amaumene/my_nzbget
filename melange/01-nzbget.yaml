@@ -1,0 +1,42 @@
+package:
+  name: nzbget
+  version: 25.0
+  epoch: 0
+  description: "Efficient usenet downloader"
+  copyright:
+    - license: Apache-2.0
+
+environment:
+  contents:
+    keyring:
+      - https://packages.wolfi.dev/os/wolfi-signing.rsa.pub
+    repositories:
+      - https://packages.wolfi.dev/os
+      - ./packages
+    packages:
+      - busybox
+      - ca-certificates-bundle
+      - build-base
+      - libxml2-dev
+      - openssl-dev
+      - boost-dev
+      - git
+
+pipeline:
+  - uses: fetch
+    with:
+      uri: https://github.com/nzbgetcom/nzbget/archive/refs/tags/v${{package.version}}.tar.gz
+      expected-sha256: 104ebd7b0abed02ae11e968073063df27b0b39d4b62170e5785103a9a10d9999
+  - uses: cmake/configure
+    with:
+      opts: |
+        -DDISABLE_CURSES=ON
+  - uses: cmake/build
+  - uses: cmake/install
+  - uses: strip
+
+update:
+  enabled: true
+  github:
+    identifier: nzbgetcom/nzbget
+    use-tag: true
