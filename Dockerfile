@@ -1,24 +1,16 @@
-#FROM alpine AS builder
-#
-#RUN apk add --no-cache \
-#    clang \
-#    lscpu \
-#    autoconf \
-#    automake \
-#    make \
-#    linux-headers \
-#    perl \
-#    git \
-#    libxml2-static libxml2-dev xz-static zlib-static libxslt-static boost-static boost-dev curl cmake util-linux-misc busybox-static
-
-### Setup builder
-
 FROM alpine AS builder
 
 RUN apk add --no-cache \
     clang \
     lscpu \
-    make
+    autoconf \
+    automake \
+    make \
+    cmake \
+    linux-headers \
+    perl \
+    git \
+    libxml2-static libxml2-dev xz-static zlib-static libxslt-static boost-static boost-dev curl cmake util-linux-misc
 
 ### Build unrar
 
@@ -46,70 +38,68 @@ RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
 
 ### Build openssl
 
-FROM builder AS openssl
-
-RUN apk add --no-cache \
-    perl \
-    linux-headers
-
-WORKDIR /app
-
-RUN wget -O - https://api.github.com/repos/openssl/openssl/releases/latest | grep 'tarball_url' | cut -d '"' -f 4 | xargs wget -O openssl.tar.gz
-
-RUN mkdir openssl
-
-RUN tar xaf openssl.tar.gz -C openssl --strip-components=1
-
-WORKDIR /app/openssl
-
-RUN if [ $(lscpu | grep -c aarch64) -gt 0 ];\
-    then CC=clang CXXFLAGS="-O3 -march=armv8-a+crypto+crc" CFLAGS="-O3 -march=armv8-a+crypto+crc" \
-      ./Configure enable-ktls \
-                no-shared \
-                no-zlib \
-                no-async \
-                no-comp \
-                no-idea \
-                no-mdc2 \
-                no-rc5 \
-                no-ec2m \
-                no-ssl3 \
-                no-seed \
-                no-weak-ssl-ciphers \
-                enable-devcryptoeng; \
-    else ./Configure enable-ktls \
-                no-shared \
-                no-zlib \
-                no-async \
-                no-comp \
-                no-idea \
-                no-mdc2 \
-                no-rc5 \
-                no-ec2m \
-                no-ssl3 \
-                no-seed \
-                no-weak-ssl-ciphers \
-                enable-devcryptoeng; fi
-
-RUN wget -O include/crypto/cryptodev.h https://raw.githubusercontent.com/cryptodev-linux/cryptodev-linux/refs/heads/master/crypto/cryptodev.h
-
-RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
-
-RUN make install
-
-RUN sed -e '/providers = provider_sect/a\' -e 'engines = engines_sect' -i /usr/local/ssl/openssl.cnf
-
-COPY ./devcrypto.cnf ./devcrypto.cnf
-
-RUN cat devcrypto.cnf >> /usr/local/ssl/openssl.cnf
+#FROM builder AS openssl
+#
+#RUN apk add --no-cache \
+#    perl \
+#    linux-headers
+#
+#WORKDIR /app
+#
+#RUN wget -O - https://api.github.com/repos/openssl/openssl/releases/latest | grep 'tarball_url' | cut -d '"' -f 4 | xargs wget -O openssl.tar.gz
+#
+#RUN mkdir openssl
+#
+#RUN tar xaf openssl.tar.gz -C openssl --strip-components=1
+#
+#WORKDIR /app/openssl
+#
+#RUN if [ $(lscpu | grep -c aarch64) -gt 0 ];\
+#    then CC=clang CXXFLAGS="-O3 -march=armv8-a+crypto+crc" CFLAGS="-O3 -march=armv8-a+crypto+crc" \
+#      ./Configure enable-ktls \
+#                no-shared \
+#                no-zlib \
+#                no-async \
+#                no-comp \
+#                no-idea \
+#                no-mdc2 \
+#                no-rc5 \
+#                no-ec2m \
+#                no-ssl3 \
+#                no-seed \
+#                no-weak-ssl-ciphers \
+#                enable-devcryptoeng; \
+#    else ./Configure enable-ktls \
+#                no-shared \
+#                no-zlib \
+#                no-async \
+#                no-comp \
+#                no-idea \
+#                no-mdc2 \
+#                no-rc5 \
+#                no-ec2m \
+#                no-ssl3 \
+#                no-seed \
+#                no-weak-ssl-ciphers \
+#                enable-devcryptoeng; fi
+#
+#RUN wget -O include/crypto/cryptodev.h https://raw.githubusercontent.com/cryptodev-linux/cryptodev-linux/refs/heads/master/crypto/cryptodev.h
+#
+#RUN make -j $(lscpu | grep "^CPU(s):" | awk '{print $2}')
+#
+#RUN make install
+#
+#RUN sed -e '/providers = provider_sect/a\' -e 'engines = engines_sect' -i /usr/local/ssl/openssl.cnf
+#
+#COPY ./devcrypto.cnf ./devcrypto.cnf
+#
+#RUN cat devcrypto.cnf >> /usr/local/ssl/openssl.cnf
 
 ### Build nzbget
 
 FROM builder AS nzbget
 
 RUN apk add --no-cache \
-    cmake \
-    git \
     libxml2-static \
     libxml2-dev \
     xz-static \
@@ -117,7 +107,8 @@ RUN apk add --no-cache \
     libxslt-static \
     boost-static \
     boost-dev \
-    busybox-static
+    openssl-dev \
+    openssl-libs-static
 
 WORKDIR /app
 
@@ -129,9 +120,9 @@ RUN tar xvaf nzbget.tar.gz -C nzbget --strip-components=1
 
 WORKDIR /app/nzbget
 
-COPY --from=openssl /usr/local/include/openssl/ /usr/local/include/openssl/
-COPY --from=openssl /app/openssl/libcrypto.a /usr/local/lib/libcrypto.a
-COPY --from=openssl /app/openssl/libssl.a /usr/local/lib/libssl.a
+#COPY --from=openssl /usr/local/include/openssl/ /usr/local/include/openssl/
+#COPY --from=openssl /app/openssl/libcrypto.a /usr/local/lib/libcrypto.a
+#COPY --from=openssl /app/openssl/libssl.a /usr/local/lib/libssl.a
 
 RUN mkdir build && \
       cd build && \
@@ -157,7 +148,7 @@ RUN sed -i \
   -e "s|^CertStore=.*|CertStore=/etc/ssl/certs/ca-certificates.crt|g" \
   build/nzbget.conf
 
-FROM scratch
+FROM alpine
 
 COPY --chown=65532 --from=unrar /app/unrar/unrar /app/unrar
 COPY --chown=65532 --from=nzbget /app/nzbget/build/nzbget /app/nzbget
@@ -165,10 +156,10 @@ COPY --chown=65532 --from=nzbget /app/nzbget/webui /app/webui
 COPY --chown=65532 --from=nzbget /app/nzbget/build/nzbget.conf /app/nzbget.conf.template
 COPY --chown=65532 --from=nzbget /app/nzbget/build/nzbget.conf /config/nzbget.conf
 
-COPY --from=nzbget /bin/busybox.static /busybox
-COPY --from=nzbget /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+#COPY --from=nzbget /bin/busybox.static /busybox
+#COPY --from=nzbget /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=openssl /usr/local/ssl/openssl.cnf /usr/local/ssl/openssl.cnf
+#COPY --from=openssl /usr/local/ssl/openssl.cnf /usr/local/ssl/openssl.cnf
 
 VOLUME /config
 
