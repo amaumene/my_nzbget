@@ -24,4 +24,4 @@ env:
 
 jobs:
   call-my-containers-publish:
-    uses: amaumene/my_containers/.github/workflows/build-apko-melange.yaml@main
+    uses: amaumene/my_containers/.github/workflows/publish-container.yml@main
